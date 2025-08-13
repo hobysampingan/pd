@@ -22,16 +22,40 @@
     <main class="container player-layout">
       <section class="player-main">
         <h1 id="videoTitle" class="player-title"></h1>
-        <video id="videoEl" class="player" controls preload="metadata" playsinline></video>
+        <div class="video-container">
+          <video id="videoEl" class="player" controls preload="metadata" playsinline></video>
+          <div class="video-overlay">
+            <button id="fullscreenBtn" class="overlay-btn fullscreen-btn" title="Fullscreen">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+              </svg>
+            </button>
+            <button id="rotateBtn" class="overlay-btn rotate-btn" title="Rotate Video">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
         <div class="player-actions">
           <a id="downloadBtn" class="btn primary" href="#" download>Unduh</a>
           <a id="openSourceBtn" class="btn" href="#" target="_blank" rel="noopener">Buka Sumber</a>
+          <button id="orientationBtn" class="btn orientation-btn" title="Toggle Video Orientation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M16.48 2.52c3.27 1.55 5.61 4.72 5.97 8.48h1.5C23.44 4.84 18.29 0 12 0l-.66.03 3.81 3.81 1.33-1.32zm-6.25-.77c-.59-.59-1.54-.59-2.12 0L1.75 8.11c-.59.59-.59 1.54 0 2.12l12.02 12.02c.59.59 1.54.59 2.12 0l6.36-6.36c.59-.59.59-1.54 0-2.12L10.23 1.75zm4.6 19.44L2.81 8.81l6.36-6.36 12.02 12.02-6.36 6.36z"/>
+            </svg>
+            <span class="btn-text">Auto Rotate</span>
+          </button>
         </div>
         <div id="videoMeta" class="player-meta"></div>
       </section>
 
       <aside class="player-recommendations">
         <h2 class="section-title">Rekomendasi</h2>
+        <div class="recommendation-controls">
+          <button id="sameOrientationBtn" class="filter-btn active" data-filter="same">Orientasi Sama</button>
+          <button id="allVideosBtn" class="filter-btn" data-filter="all">Semua Video</button>
+        </div>
         <div id="recGrid" class="video-grid compact"></div>
       </aside>
     </main>

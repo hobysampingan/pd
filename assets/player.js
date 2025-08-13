@@ -6,9 +6,18 @@
   const openSourceBtn = document.getElementById("openSourceBtn");
   const recGrid = document.getElementById("recGrid");
   const recTpl = document.getElementById("recCardTemplate");
+  const fullscreenBtn = document.getElementById("fullscreenBtn");
+  const rotateBtn = document.getElementById("rotateBtn");
+  const orientationBtn = document.getElementById("orientationBtn");
+  const sameOrientationBtn = document.getElementById("sameOrientationBtn");
+  const allVideosBtn = document.getElementById("allVideosBtn");
+  const videoContainer = document.querySelector(".video-container");
 
   let allVideos = [];
   let currentVideo = null;
+  let currentVideoOrientation = null;
+  let recommendationFilter = "same"; // same, all
+  let autoRotateEnabled = true;
 
   function getIdFromQuery() {
     const params = new URLSearchParams(location.search);
@@ -27,6 +36,10 @@
       const sizeFormatted = v?.video_info?.file_size_formatted || (size ? AppUtils.formatBytes(size) : "");
       const width = typeof v?.video_info?.width === "number" ? v.video_info.width : null;
       const height = typeof v?.video_info?.height === "number" ? v.video_info.height : null;
+      
+      // Detect video orientation
+      const isVertical = width && height && height > width;
+      
       return {
         id: String(v.id ?? ""),
         title: String(v.title ?? "Tanpa Judul"),
@@ -39,6 +52,7 @@
         width,
         height,
         resolutionLabel: width && height ? `${height}p` : "",
+        isVertical,
       };
     });
   }
@@ -50,7 +64,7 @@
       return;
     }
 
-    const { title, url, durationFormatted, sizeFormatted, width, height } = currentVideo;
+    const { title, url, durationFormatted, sizeFormatted, width, height, isVertical } = currentVideo;
     titleEl.textContent = title;
 
     videoEl.src = url;
@@ -59,6 +73,10 @@
     downloadBtn.href = url;
     openSourceBtn.href = url;
 
+    // Update video container layout based on orientation
+    currentVideoOrientation = isVertical ? "vertical" : "horizontal";
+    updateVideoContainerLayout();
+
     const metaParts = [];
     if (durationFormatted) metaParts.push(`Durasi: ${durationFormatted}`);
     if (width && height) metaParts.push(`Resolusi: ${width}×${height}`);
@@ -66,8 +84,28 @@
     metaEl.textContent = metaParts.join("  •  ");
   }
 
+  function updateVideoContainerLayout() {
+    if (!videoContainer) return;
+    
+    // Remove existing orientation classes
+    videoContainer.classList.remove("vertical", "horizontal");
+    
+    // Add appropriate orientation class
+    if (currentVideoOrientation === "vertical") {
+      videoContainer.classList.add("vertical");
+    } else {
+      videoContainer.classList.add("horizontal");
+    }
+  }
+
   function renderRecommendations() {
-    const others = allVideos.filter(v => v.id !== currentVideo.id);
+    let others = allVideos.filter(v => v.id !== currentVideo.id);
+    
+    // Apply orientation filter
+    if (recommendationFilter === "same" && currentVideoOrientation) {
+      others = others.filter(v => v.isVertical === currentVideo.isVertical);
+    }
+    
     // Shuffle lightweight
     for (let i = others.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -82,6 +120,13 @@
 
       const thumbWrap = node.querySelector(".thumb-wrap");
       thumbWrap.href = href;
+
+      // Add orientation class to recommendation cards
+      if (v.isVertical) {
+        node.classList.add('vertical');
+      } else {
+        node.classList.add('horizontal');
+      }
 
       const img = node.querySelector("img.thumb");
       img.setAttribute("alt", v.title);
@@ -119,12 +164,72 @@
     }
   }
 
+  function setupEventHandlers() {
+    // Fullscreen button
+    fullscreenBtn.addEventListener("click", () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        videoContainer.requestFullscreen().catch(err => {
+          console.log("Fullscreen error:", err);
+        });
+      }
+    });
+
+    // Rotate button (for mobile)
+    rotateBtn.addEventListener("click", () => {
+      if (screen.orientation && screen.orientation.lock) {
+        const newOrientation = screen.orientation.type.includes("portrait") ? "landscape" : "portrait";
+        screen.orientation.lock(newOrientation).catch(err => {
+          console.log("Orientation lock error:", err);
+        });
+      }
+    });
+
+    // Auto rotate toggle
+    orientationBtn.addEventListener("click", () => {
+      autoRotateEnabled = !autoRotateEnabled;
+      orientationBtn.classList.toggle("active", autoRotateEnabled);
+      orientationBtn.querySelector(".btn-text").textContent = autoRotateEnabled ? "Auto Rotate" : "Manual";
+      
+      if (autoRotateEnabled) {
+        updateVideoContainerLayout();
+      }
+    });
+
+    // Recommendation filters
+    sameOrientationBtn.addEventListener("click", () => {
+      recommendationFilter = "same";
+      updateFilterButtons();
+      renderRecommendations();
+    });
+
+    allVideosBtn.addEventListener("click", () => {
+      recommendationFilter = "all";
+      updateFilterButtons();
+      renderRecommendations();
+    });
+
+    // Video orientation change detection
+    videoEl.addEventListener("loadedmetadata", () => {
+      if (autoRotateEnabled) {
+        updateVideoContainerLayout();
+      }
+    });
+  }
+
+  function updateFilterButtons() {
+    sameOrientationBtn.classList.toggle("active", recommendationFilter === "same");
+    allVideosBtn.classList.toggle("active", recommendationFilter === "all");
+  }
+
   async function init() {
     await loadData();
     const id = getIdFromQuery();
     currentVideo = allVideos.find(v => v.id === id);
     renderPlayer();
     if (currentVideo) renderRecommendations();
+    setupEventHandlers();
   }
 
   init().catch(err => {

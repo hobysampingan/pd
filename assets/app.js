@@ -5,6 +5,9 @@
   const sortSelect = document.getElementById("sortSelect");
   const sentinelEl = document.getElementById("sentinel");
   const cardTpl = document.getElementById("videoCardTemplate");
+  const viewToggle = document.getElementById("viewToggle");
+  const viewHorizontal = document.getElementById("viewHorizontal");
+  const viewVertical = document.getElementById("viewVertical");
 
   /** State */
   let allVideos = [];
@@ -12,6 +15,7 @@
   let renderIndex = 0;
   const RENDER_BATCH = 30;
   let lazyObserver = null;
+  let currentViewMode = "auto"; // auto, horizontal, vertical
 
   async function loadData() {
     const res = await fetch("/video_info.json", { cache: "no-store" });
@@ -27,6 +31,10 @@
       const sizeFormatted = v?.video_info?.file_size_formatted || (size ? AppUtils.formatBytes(size) : "");
       const width = typeof v?.video_info?.width === "number" ? v.video_info.width : null;
       const height = typeof v?.video_info?.height === "number" ? v.video_info.height : null;
+      
+      // Detect video orientation
+      const isVertical = width && height && height > width;
+      
       return {
         id: String(v.id ?? ""),
         title: String(v.title ?? "Tanpa Judul"),
@@ -39,6 +47,7 @@
         width,
         height,
         resolutionLabel: width && height ? `${height}p` : "",
+        isVertical,
       };
     });
 
@@ -49,6 +58,38 @@
 
   function updateStats() {
     statsEl.textContent = `${filteredVideos.length} video`;
+  }
+
+  function updateViewMode() {
+    // Remove all view mode classes
+    gridEl.classList.remove('vertical-mode', 'horizontal-mode');
+    
+    if (currentViewMode === 'vertical') {
+      gridEl.classList.add('vertical-mode');
+    } else if (currentViewMode === 'horizontal') {
+      gridEl.classList.add('horizontal-mode');
+    }
+    // auto mode doesn't add any class, uses default responsive behavior
+  }
+
+  function setViewMode(mode) {
+    currentViewMode = mode;
+    
+    // Update button states
+    [viewToggle, viewHorizontal, viewVertical].forEach(btn => {
+      btn.classList.remove('active');
+    });
+    
+    if (mode === 'auto') {
+      viewToggle.classList.add('active');
+    } else if (mode === 'horizontal') {
+      viewHorizontal.classList.add('active');
+    } else if (mode === 'vertical') {
+      viewVertical.classList.add('active');
+    }
+    
+    updateViewMode();
+    renderReset(); // Re-render with new layout
   }
 
   function renderReset() {
@@ -69,6 +110,13 @@
 
       const thumbWrap = node.querySelector(".thumb-wrap");
       thumbWrap.href = href;
+
+      // Add orientation class to video card
+      if (v.isVertical) {
+        node.classList.add('vertical');
+      } else {
+        node.classList.add('horizontal');
+      }
 
       const img = node.querySelector("img.thumb");
       img.setAttribute("alt", v.title);
@@ -191,9 +239,17 @@
     searchInput.addEventListener("input", debouncedFilter);
     sortSelect.addEventListener("change", () => { applyFilters(); syncQueryString(); });
 
+    // View mode toggle
+    viewToggle.addEventListener("click", () => setViewMode('auto'));
+    viewHorizontal.addEventListener("click", () => setViewMode('horizontal'));
+    viewVertical.addEventListener("click", () => setViewMode('vertical'));
+
     await loadData();
     applyFilters();
     setupInfiniteScroll();
+    
+    // Initialize view mode
+    updateViewMode();
   }
 
   init().catch(err => {
